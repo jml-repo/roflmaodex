@@ -1,0 +1,1862 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a0a0a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ROFLMAOdex">
+<title>ROFLMAOdex</title>
+<link rel="manifest" href="data:application/manifest+json,{%22name%22:%22ROFLMAOdex%22,%22short_name%22:%22Rdex%22,%22display%22:%22standalone%22,%22start_url%22:%22.%22,%22theme_color%22:%22%230a0a0a%22,%22background_color%22:%22%230a0a0a%22,%22icons%22:[{%22src%22:%22data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%230a0a0a'/%3E%3Ctext x='256' y='360' font-size='300' text-anchor='middle' fill='%2300ff88'%3E%F0%9F%93%93%3C/text%3E%3C/svg%3E%22,%22sizes%22:%22512x512%22,%22type%22:%22image/svg+xml%22}]}">
+<style>
+/* =====================================================
+   ROFLMAOdex — Touch-first Android PWA
+   Key fix: UI always rendered. sql.js loaded on demand.
+   All buttons have BOTH onclick and ontouchend.
+   ===================================================== */
+
+:root {
+  --bg:#0a0a0a; --bg2:#111111; --bg3:#1c1c1c; --bg4:#242424;
+  --border:#2a2a2a; --b2:#3a3a3a;
+  --acc:#00ff88; --dan:#ff3355; --warn:#ff6b35;
+  --dim:#555555; --txt:#e8e8e8; --txt2:#999999;
+  --mono: 'Courier New', Courier, monospace;
+  --head: Impact, 'Arial Black', sans-serif;
+  --r: 6px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation; }
+
+html, body {
+  height: 100%; height: 100dvh;
+  background: var(--bg);
+  color: var(--txt);
+  font-family: var(--mono);
+  font-size: 16px;
+  overflow: hidden;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* ── LOCK SCREEN — always visible until unlocked ── */
+#lockScreen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100dvh;
+  padding: 20px;
+  background: var(--bg);
+  position: fixed; inset: 0;
+  z-index: 100;
+  overflow-y: auto;
+}
+
+.logo {
+  font-family: var(--head);
+  font-size: 52px;
+  color: var(--acc);
+  letter-spacing: 3px;
+  text-shadow: 0 0 30px rgba(0,255,136,0.5);
+  margin-bottom: 4px;
+  line-height: 1;
+}
+.logo-sub {
+  font-size: 11px;
+  color: var(--dim);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin-bottom: 32px;
+  text-align: center;
+}
+
+.lock-card {
+  width: 100%;
+  max-width: 380px;
+  background: var(--bg2);
+  border: 1px solid var(--b2);
+  border-radius: var(--r);
+  padding: 24px 20px;
+}
+.lock-card .card-icon { font-size: 36px; text-align: center; margin-bottom: 12px; }
+.lock-card h2 {
+  font-family: var(--head);
+  font-size: 20px;
+  color: var(--txt2);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+/* ── FORM FIELDS ── */
+.fg { margin-bottom: 16px; }
+.fg label {
+  display: block;
+  font-size: 11px;
+  color: var(--dim);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+input[type="password"],
+input[type="text"],
+input[type="number"],
+input[type="search"],
+textarea {
+  display: block;
+  width: 100%;
+  min-height: 52px;
+  background: var(--bg3);
+  border: 1px solid var(--b2);
+  border-radius: var(--r);
+  color: var(--txt);
+  font-family: var(--mono);
+  font-size: 16px;
+  padding: 14px 14px;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+input:focus, textarea:focus { border-color: var(--acc); }
+textarea { min-height: 90px; resize: none; }
+
+.msg { font-size: 13px; min-height: 20px; margin-top: 8px; padding: 2px 0; }
+.msg.err { color: var(--dan); }
+.msg.ok  { color: var(--acc); }
+
+/* ── BUTTONS — 56px tall, always visible ── */
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 56px;
+  padding: 0 16px;
+  margin-top: 12px;
+  border: none;
+  border-radius: var(--r);
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  -webkit-appearance: none;
+  user-select: none;
+  /* Make sure nothing is hiding it */
+  position: relative;
+  z-index: 1;
+}
+.btn:active { opacity: 0.7; }
+
+.btn-green  { background: var(--acc);  color: #000000; }
+.btn-ghost  { background: transparent; color: var(--txt2); border: 1px solid var(--b2); }
+.btn-danger { background: transparent; color: var(--dan);  border: 1px solid var(--dan); }
+.btn-inline { width: auto; display: inline-flex; min-height: 48px; padding: 0 16px; margin-top: 0; }
+
+.btn-row { display: flex; gap: 10px; margin-top: 12px; }
+.btn-row .btn { flex: 1; margin-top: 0; }
+
+/* Reset link button */
+.reset-link {
+  display: block;
+  background: none;
+  border: none;
+  color: var(--dim);
+  font-family: var(--mono);
+  font-size: 13px;
+  text-decoration: underline;
+  padding: 16px 4px 4px;
+  cursor: pointer;
+  text-align: center;
+  width: 100%;
+  min-height: 48px;
+}
+
+/* Loading indicator */
+#loadingBar {
+  width: 100%;
+  max-width: 380px;
+  background: var(--bg3);
+  border: 1px solid var(--b2);
+  border-radius: var(--r);
+  padding: 16px;
+  text-align: center;
+  color: var(--dim);
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+.spinner {
+  display: inline-block;
+  width: 16px; height: 16px;
+  border: 2px solid var(--b2);
+  border-top-color: var(--acc);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  vertical-align: middle;
+  margin-right: 8px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── MAIN APP SHELL ── */
+#app {
+  display: none;
+  flex-direction: column;
+  height: 100dvh;
+  overflow: hidden;
+}
+#app.visible { display: flex; }
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 52px;
+  padding: 0 14px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.tb-logo { font-family: var(--head); font-size: 26px; color: var(--acc); letter-spacing: 2px; }
+.tb-right { display: flex; align-items: center; gap: 6px; }
+.tb-count { font-size: 11px; color: var(--dim); letter-spacing: 1px; }
+.tb-lock {
+  background: none; border: none;
+  color: var(--txt2); font-size: 22px;
+  min-width: 44px; min-height: 44px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; border-radius: var(--r);
+}
+.tb-lock:active { color: var(--acc); background: var(--bg3); }
+
+.content {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
+.bnav {
+  display: flex;
+  background: var(--bg2);
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.nb {
+  flex: 1;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 8px 4px 6px;
+  background: none; border: none;
+  color: var(--dim);
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  gap: 3px;
+  min-height: 56px;
+}
+.nb .ni { font-size: 20px; line-height: 1; }
+.nb.on { color: var(--acc); }
+.nb:active { color: var(--acc); }
+
+/* ── PANELS ── */
+.panel { display: none; padding: 14px; }
+.panel.on { display: block; }
+
+.panel-title {
+  font-family: var(--head);
+  font-size: 22px; color: var(--acc);
+  letter-spacing: 2px; text-transform: uppercase;
+  margin-bottom: 14px;
+}
+
+/* FAB */
+.fab {
+  position: fixed;
+  right: 16px;
+  bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+  width: 60px; height: 60px;
+  border-radius: 50%;
+  background: var(--acc);
+  color: #000;
+  font-size: 30px; font-weight: bold;
+  border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 18px rgba(0,255,136,0.45);
+  z-index: 50;
+}
+.fab:active { opacity: 0.7; transform: scale(0.93); }
+
+/* ── SEARCH BAR ── */
+.sbar { position: relative; margin-bottom: 14px; }
+.sbar input { padding-left: 40px; padding-right: 46px; }
+.sbar-ico { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 16px; color: var(--dim); pointer-events: none; }
+.sbar-clr {
+  position: absolute; right: 0; top: 0; bottom: 0; width: 46px;
+  background: none; border: none; color: var(--dim); font-size: 18px;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.sbar-clr:active { color: var(--txt); }
+
+/* ── PERSON CARDS ── */
+.card-wrap { position: relative; overflow: hidden; border-radius: var(--r); margin-bottom: 10px; }
+.card-del-bg {
+  position: absolute; right: 0; top: 0; bottom: 0; width: 80px;
+  background: var(--dan); display: flex; align-items: center; justify-content: center;
+  font-size: 26px; border-radius: var(--r);
+}
+.pcard {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r);
+  padding: 14px; cursor: pointer;
+  transition: transform 0.18s ease, border-color 0.12s;
+  will-change: transform; position: relative; z-index: 1;
+}
+.pcard:active { border-color: var(--acc); }
+.pcard-name { font-family: var(--head); font-size: 22px; color: var(--txt); line-height: 1; margin-bottom: 5px; }
+.pcard-meta { font-size: 13px; color: var(--txt2); margin-bottom: 8px; line-height: 1.5; }
+.tag-row { display: flex; flex-wrap: wrap; gap: 5px; }
+.chip {
+  padding: 4px 10px;
+  background: rgba(0,255,136,0.1); border: 1px solid rgba(0,255,136,0.3);
+  border-radius: 3px; font-size: 12px; color: var(--acc);
+  letter-spacing: 1px; text-transform: uppercase;
+}
+.chip.hl { background: var(--acc); color: #000; }
+
+/* ── INTERESTS GRID ── */
+.i-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(88px,1fr)); gap: 8px; margin-bottom: 16px; }
+.i-tile {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r);
+  padding: 14px 6px; text-align: center; cursor: pointer;
+  min-height: 68px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+.i-tile:active { border-color: var(--acc); background: rgba(0,255,136,0.07); }
+.i-kw { font-family: var(--head); font-size: 18px; color: var(--acc); letter-spacing: 2px; text-transform: uppercase; }
+.i-ct { font-size: 11px; color: var(--dim); margin-top: 3px; }
+
+/* ── CONNECTIONS ── */
+.conn-item {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r);
+  padding: 14px; margin-bottom: 10px;
+  display: flex; align-items: center; gap: 10px;
+}
+.conn-names { font-family: var(--head); font-size: 17px; color: var(--txt); letter-spacing: 1px; }
+.conn-note  { font-size: 12px; color: var(--txt2); margin-top: 3px; }
+.conn-del-btn {
+  background: none; border: none; color: var(--dan); font-size: 22px;
+  min-width: 44px; min-height: 44px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: var(--r);
+}
+.conn-del-btn:active { background: rgba(255,51,85,0.1); }
+
+/* ── PERSON PICKER BUTTON ── */
+.pick-btn {
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%; min-height: 52px;
+  background: var(--bg3); border: 1px solid var(--b2); border-radius: var(--r);
+  color: var(--txt); font-family: var(--mono); font-size: 15px;
+  padding: 14px; cursor: pointer;
+}
+.pick-btn:active { border-color: var(--acc); }
+.pick-placeholder { color: var(--dim); }
+.pick-chevron { color: var(--dim); font-size: 20px; }
+
+/* ── SETTINGS ITEMS ── */
+.s-item {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r);
+  padding: 14px; margin-bottom: 10px;
+}
+.s-item h4 { font-family: var(--head); font-size: 17px; letter-spacing: 1px; text-transform: uppercase; color: var(--txt2); margin-bottom: 6px; }
+.s-item p  { font-size: 12px; color: var(--dim); line-height: 1.6; margin-bottom: 10px; }
+.warn-box {
+  background: rgba(255,107,53,0.1); border: 1px solid rgba(255,107,53,0.4);
+  border-radius: var(--r); padding: 10px 12px;
+  font-size: 12px; color: var(--warn); line-height: 1.5; margin-bottom: 10px;
+}
+
+/* ── BOTTOM SHEET ── */
+.sheet-bg {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.8); z-index: 200;
+  align-items: flex-end; justify-content: center;
+}
+.sheet-bg.open { display: flex; }
+.sheet {
+  width: 100%; max-width: 540px; max-height: 90dvh;
+  background: var(--bg2); border-top: 2px solid var(--acc);
+  border-radius: 10px 10px 0 0;
+  overflow-y: auto; -webkit-overflow-scrolling: touch;
+  padding: 0 16px 32px;
+  animation: sheetUp 0.2s ease;
+}
+@keyframes sheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+.sheet-handle { width: 40px; height: 4px; background: var(--b2); border-radius: 2px; margin: 12px auto 16px; }
+.sheet-hdr {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 0 14px; position: sticky; top: 0; background: var(--bg2); z-index: 2;
+}
+.sheet-title { font-family: var(--head); font-size: 22px; color: var(--acc); letter-spacing: 2px; text-transform: uppercase; }
+.sheet-close {
+  background: none; border: none; color: var(--dim); font-size: 28px;
+  min-width: 44px; min-height: 44px;
+  display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: var(--r);
+}
+.sheet-close:active { color: var(--acc); background: var(--bg3); }
+
+/* ── TAG PICKER ── */
+.tag-label { font-size: 10px; color: var(--dim); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px; }
+.preset-wrap { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.preset-btn {
+  padding: 10px 14px; min-height: 44px;
+  background: var(--bg3); border: 1px solid var(--b2); border-radius: var(--r);
+  font-family: var(--mono); font-size: 13px; color: var(--txt2);
+  letter-spacing: 1px; text-transform: uppercase; cursor: pointer; user-select: none;
+}
+.preset-btn.sel { background: rgba(0,255,136,0.15); border-color: var(--acc); color: var(--acc); }
+.preset-btn:active { opacity: 0.7; }
+.active-tags {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  min-height: 40px; padding: 8px;
+  background: var(--bg3); border: 1px solid var(--border); border-radius: var(--r);
+  align-items: center; margin-bottom: 12px;
+}
+.a-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 5px 10px;
+  background: rgba(0,255,136,0.15); border: 1px solid var(--acc);
+  border-radius: 3px; font-size: 12px; color: var(--acc);
+  letter-spacing: 1px; text-transform: uppercase;
+}
+.a-chip-x {
+  background: none; border: none; color: var(--acc);
+  font-size: 18px; line-height: 1; padding: 0 2px;
+  min-width: 28px; min-height: 28px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.kw-row { display: flex; gap: 8px; align-items: stretch; }
+.kw-row input { flex: 1; }
+.kw-row .btn { width: auto; flex-shrink: 0; min-width: 72px; margin-top: 0; }
+
+/* ── PERSON PICKER LIST ── */
+.pp-search { position: sticky; top: 56px; background: var(--bg2); padding-bottom: 8px; z-index: 2; }
+.pp-row {
+  display: flex; align-items: center; gap: 12px;
+  min-height: 58px; padding: 10px 14px;
+  background: var(--bg3); border: 1px solid var(--border); border-radius: var(--r);
+  margin-bottom: 6px; cursor: pointer;
+}
+.pp-row:active { border-color: var(--acc); }
+.pp-row.sel { border-color: var(--acc); background: rgba(0,255,136,0.07); }
+.pp-check { font-size: 22px; flex-shrink: 0; }
+.pp-name { font-family: var(--head); font-size: 20px; color: var(--txt); letter-spacing: 1px; }
+.pp-meta { font-size: 12px; color: var(--txt2); }
+
+/* ── CONFIRM DIALOG ── */
+.confirm-bg {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.85); z-index: 300;
+  align-items: center; justify-content: center; padding: 20px;
+}
+.confirm-bg.open { display: flex; }
+.confirm-box { background: var(--bg2); border: 1px solid var(--b2); border-radius: var(--r); padding: 24px 20px; width: 100%; max-width: 340px; }
+.confirm-box h3 { font-family: var(--head); font-size: 20px; color: var(--warn); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 10px; }
+.confirm-box p { font-size: 13px; color: var(--txt2); line-height: 1.6; margin-bottom: 20px; }
+.confirm-btns { display: flex; gap: 10px; }
+.confirm-btns .btn { flex: 1; margin-top: 0; }
+
+/* ── TOAST ── */
+.toast {
+  position: fixed;
+  bottom: calc(68px + env(safe-area-inset-bottom, 0px) + 6px);
+  left: 50%; transform: translateX(-50%) translateY(10px);
+  background: var(--bg3); border: 1px solid var(--b2);
+  border-radius: 20px; padding: 10px 20px; font-size: 13px;
+  z-index: 999; opacity: 0; transition: all 0.2s;
+  white-space: nowrap; pointer-events: none; max-width: 90vw;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.ok  { border-color: var(--acc); color: var(--acc); }
+.toast.err { border-color: var(--dan); color: var(--dan); }
+
+/* ── EMPTY STATE ── */
+.empty { text-align: center; padding: 40px 16px; color: var(--dim); }
+.empty .e-ico { font-size: 44px; margin-bottom: 12px; }
+.empty p { font-size: 14px; line-height: 1.7; }
+
+.divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+mark { background: rgba(0,255,136,0.3); color: var(--acc); border-radius: 2px; padding: 0 1px; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════
+     LOCK SCREEN
+     Shown immediately — no JS needed to display.
+     Buttons work before sql.js loads.
+     sql.js is loaded when user first taps Unlock/Create.
+═══════════════════════════════ -->
+<div id="lockScreen">
+  <div class="logo">ROFLMAOdex</div>
+  <div class="logo-sub">Private Resale Rolodex</div>
+
+  <!-- Loading indicator — hidden by default, shown while sql.js loads -->
+  <div id="loadingBar" style="display:none">
+    <span class="spinner"></span> Loading database engine…
+  </div>
+
+  <!-- SETUP: shown on first run (no salt in IDB) -->
+  <div id="setupBox" class="lock-card" style="display:none">
+    <div class="card-icon">🔐</div>
+    <h2>Create Password</h2>
+    <div class="fg">
+      <label>Password (min 6 chars)</label>
+      <input type="password" id="sp1" placeholder="••••••••" autocomplete="new-password">
+    </div>
+    <div class="fg">
+      <label>Confirm Password</label>
+      <input type="password" id="sp2" placeholder="••••••••" autocomplete="new-password">
+    </div>
+    <div class="msg err" id="setupMsg"></div>
+    <button class="btn btn-green" id="setupBtn"
+            onclick="doSetup()" ontouchend="tapBtn(this, doSetup)">
+      🔐 Create &amp; Unlock
+    </button>
+  </div>
+
+  <!-- UNLOCK: shown on subsequent visits -->
+  <div id="unlockBox" class="lock-card" style="display:none">
+    <div class="card-icon">🔒</div>
+    <h2>Unlock</h2>
+    <div class="fg">
+      <label>Master Password</label>
+      <input type="password" id="unlockPw" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <div class="msg err" id="unlockMsg"></div>
+    <button class="btn btn-green" id="unlockBtn"
+            onclick="doUnlock()" ontouchend="tapBtn(this, doUnlock)">
+      🔓 Unlock
+    </button>
+    <button class="reset-link"
+            onclick="confirmReset()" ontouchend="tapBtn(this, confirmReset)">
+      ⚠️ Reset app (wipes all data)
+    </button>
+  </div>
+
+  <!-- CHECKING: shown briefly while we check IDB -->
+  <div id="checkingBox" class="lock-card">
+    <div class="card-icon">⏳</div>
+    <h2>Starting up…</h2>
+    <p style="color:var(--dim);font-size:13px;text-align:center;line-height:1.6">
+      Checking for existing data.<br>This takes just a second.
+    </p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════
+     MAIN APP (hidden until unlocked)
+═══════════════════════════════ -->
+<div id="app">
+
+  <div class="topbar">
+    <div class="tb-logo">Rdex</div>
+    <div class="tb-right">
+      <span class="tb-count" id="recCount">— people</span>
+      <button class="tb-lock"
+              onclick="lockApp()" ontouchend="tapBtn(this, lockApp)">🔒</button>
+    </div>
+  </div>
+
+  <div class="content" id="mainContent">
+
+    <!-- PEOPLE -->
+    <div id="pan-people" class="panel on">
+      <div class="sbar">
+        <span class="sbar-ico">🔍</span>
+        <input type="search" id="peopleQ" placeholder="Search name or town…"
+               oninput="renderPeople()" autocomplete="off">
+        <button class="sbar-clr"
+                onclick="clearPeopleQ()" ontouchend="tapBtn(this, clearPeopleQ)">✕</button>
+      </div>
+      <div id="peopleList"></div>
+      <div style="height:80px"></div><!-- FAB padding -->
+    </div>
+
+    <!-- INTERESTS -->
+    <div id="pan-interests" class="panel">
+      <div id="i-grid-wrap">
+        <div class="panel-title">🏷️ Interests</div>
+        <div id="i-grid" class="i-grid"></div>
+      </div>
+      <div id="i-detail" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <div class="panel-title" id="i-detail-title" style="margin-bottom:0"></div>
+          <button class="btn btn-ghost btn-inline"
+                  onclick="closeIDetail()" ontouchend="tapBtn(this, closeIDetail)">← Back</button>
+        </div>
+        <div id="i-detail-list"></div>
+      </div>
+    </div>
+
+    <!-- CONNECTIONS -->
+    <div id="pan-connections" class="panel">
+      <div class="panel-title">🔗 Network</div>
+      <div class="fg">
+        <label>Person A</label>
+        <button class="pick-btn" id="pickBtnA"
+                onclick="openPicker('A')" ontouchend="tapBtn(this, ()=>openPicker('A'))">
+          <span class="pick-placeholder" id="pickLabelA">Tap to select…</span>
+          <span class="pick-chevron">›</span>
+        </button>
+      </div>
+      <div class="fg">
+        <label>Person B</label>
+        <button class="pick-btn" id="pickBtnB"
+                onclick="openPicker('B')" ontouchend="tapBtn(this, ()=>openPicker('B'))">
+          <span class="pick-placeholder" id="pickLabelB">Tap to select…</span>
+          <span class="pick-chevron">›</span>
+        </button>
+      </div>
+      <div class="fg">
+        <label>Relationship Note</label>
+        <input type="text" id="connNote" placeholder='"cousins", "buys together"' autocomplete="off">
+      </div>
+      <button class="btn btn-green"
+              onclick="addConnection()" ontouchend="tapBtn(this, addConnection)">
+        ➕ Add Connection
+      </button>
+      <hr class="divider">
+      <div class="panel-title" style="font-size:18px;margin-bottom:12px">Existing Connections</div>
+      <div id="connList"></div>
+    </div>
+
+    <!-- SEARCH -->
+    <div id="pan-search" class="panel">
+      <div class="panel-title">🔍 Search</div>
+      <div class="sbar">
+        <span class="sbar-ico">🔍</span>
+        <input type="search" id="globalQ" placeholder="Search everything…"
+               oninput="doGlobalSearch()" autocomplete="off">
+        <button class="sbar-clr"
+                onclick="clearGlobalQ()" ontouchend="tapBtn(this, clearGlobalQ)">✕</button>
+      </div>
+      <div id="searchResults"></div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div id="pan-settings" class="panel">
+      <div class="panel-title">⚙️ Settings</div>
+
+      <div class="s-item">
+        <h4>📤 Encrypted Backup</h4>
+        <p>Downloads a .enc file. Your password is needed to restore.</p>
+        <button class="btn btn-ghost"
+                onclick="exportEnc()" ontouchend="tapBtn(this, exportEnc)">Download .enc</button>
+      </div>
+
+      <div class="s-item">
+        <h4>📄 Export CSV</h4>
+        <div class="warn-box">⚠️ Unencrypted plain text — personal use only.</div>
+        <button class="btn btn-ghost"
+                onclick="exportCSV()" ontouchend="tapBtn(this, exportCSV)">Download CSV</button>
+      </div>
+
+      <div class="s-item">
+        <h4>📥 Import Backup</h4>
+        <p>Restore from .enc file. Overwrites all current data.</p>
+        <input type="file" id="importFile" accept=".enc" style="display:none"
+               onchange="importBackup(this)">
+        <button class="btn btn-ghost"
+                onclick="document.getElementById('importFile').click()"
+                ontouchend="tapBtn(this, ()=>document.getElementById('importFile').click())">
+          Choose .enc File
+        </button>
+      </div>
+
+      <div class="s-item">
+        <h4>🔑 Change Password</h4>
+        <div class="fg" style="margin-top:10px">
+          <label>Current Password</label>
+          <input type="password" id="cpCur" placeholder="••••••••">
+        </div>
+        <div class="fg">
+          <label>New Password</label>
+          <input type="password" id="cpNew" placeholder="••••••••">
+        </div>
+        <div class="fg">
+          <label>Confirm New</label>
+          <input type="password" id="cpConf" placeholder="••••••••">
+        </div>
+        <div class="msg" id="cpMsg"></div>
+        <button class="btn btn-green"
+                onclick="changePassword()" ontouchend="tapBtn(this, changePassword)">
+          Update Password
+        </button>
+      </div>
+
+      <div class="s-item">
+        <h4>ℹ️ About</h4>
+        <p>ROFLMAOdex v1.2 — AES-256-GCM encrypted SQLite rolodex.
+           All data stays on this device. Auto-locks after 5 min inactivity
+           or when app is hidden.</p>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+
+  <!-- Floating Add Button -->
+  <button class="fab" id="fab"
+          onclick="openAddPerson()" ontouchend="tapBtn(this, openAddPerson)">＋</button>
+
+  <!-- Bottom Nav -->
+  <nav class="bnav">
+    <button class="nb on" id="nb-people"
+            onclick="switchTab('people')" ontouchend="tapBtn(this, ()=>switchTab('people'))">
+      <span class="ni">👥</span>People
+    </button>
+    <button class="nb" id="nb-interests"
+            onclick="switchTab('interests')" ontouchend="tapBtn(this, ()=>switchTab('interests'))">
+      <span class="ni">🏷️</span>Tags
+    </button>
+    <button class="nb" id="nb-connections"
+            onclick="switchTab('connections')" ontouchend="tapBtn(this, ()=>switchTab('connections'))">
+      <span class="ni">🔗</span>Network
+    </button>
+    <button class="nb" id="nb-search"
+            onclick="switchTab('search')" ontouchend="tapBtn(this, ()=>switchTab('search'))">
+      <span class="ni">🔍</span>Search
+    </button>
+    <button class="nb" id="nb-settings"
+            onclick="switchTab('settings')" ontouchend="tapBtn(this, ()=>switchTab('settings'))">
+      <span class="ni">⚙️</span>Settings
+    </button>
+  </nav>
+
+</div><!-- /app -->
+
+<!-- ═══════════════════════════════
+     PERSON FORM SHEET
+═══════════════════════════════ -->
+<div class="sheet-bg" id="personSheet">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-hdr">
+      <div class="sheet-title" id="personSheetTitle">Add Person</div>
+      <button class="sheet-close"
+              onclick="closeSheet('personSheet')"
+              ontouchend="tapBtn(this, ()=>closeSheet('personSheet'))">✕</button>
+    </div>
+
+    <input type="hidden" id="editId">
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="fg"><label>First Name *</label>
+        <input type="text" id="pFirst" placeholder="First" autocomplete="off"></div>
+      <div class="fg"><label>Last Name</label>
+        <input type="text" id="pLast" placeholder="Last" autocomplete="off"></div>
+      <div class="fg"><label>Hometown</label>
+        <input type="text" id="pHome" placeholder="From" autocomplete="off"></div>
+      <div class="fg"><label>Current Town</label>
+        <input type="text" id="pCurr" placeholder="Now" autocomplete="off"></div>
+      <div class="fg"><label>Age</label>
+        <input type="number" id="pAge" placeholder="—" min="1" max="120" inputmode="numeric"></div>
+    </div>
+
+    <div class="fg"><label>Notes</label>
+      <textarea id="pNotes" placeholder="Anything about this person…"></textarea></div>
+
+    <!-- Tag picker -->
+    <div class="tag-label">Interests — tap to toggle</div>
+    <div class="preset-wrap" id="presetWrap"></div>
+
+    <div class="tag-label">Active interests</div>
+    <div class="active-tags" id="activeTags">
+      <span style="color:var(--dim);font-size:13px">None yet</span>
+    </div>
+
+    <div class="kw-row">
+      <input type="text" id="customKw" placeholder="Custom keyword…" autocomplete="off">
+      <button class="btn btn-ghost"
+              onclick="addCustomKw()" ontouchend="tapBtn(this, addCustomKw)">＋ Add</button>
+    </div>
+
+    <div class="msg err" id="personMsg"></div>
+
+    <div class="btn-row">
+      <button class="btn btn-green" style="flex:2"
+              onclick="savePerson()" ontouchend="tapBtn(this, savePerson)">💾 Save</button>
+      <button class="btn btn-ghost" style="flex:1"
+              onclick="closeSheet('personSheet')"
+              ontouchend="tapBtn(this, ()=>closeSheet('personSheet'))">Cancel</button>
+    </div>
+
+    <div id="deletePersonRow" style="display:none;margin-top:10px">
+      <button class="btn btn-danger"
+              onclick="confirmDeletePerson()"
+              ontouchend="tapBtn(this, confirmDeletePerson)">🗑️ Delete Person</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════
+     PERSON PICKER SHEET
+═══════════════════════════════ -->
+<div class="sheet-bg" id="pickerSheet">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-hdr">
+      <div class="sheet-title" id="pickerTitle">Select Person</div>
+      <button class="sheet-close"
+              onclick="closeSheet('pickerSheet')"
+              ontouchend="tapBtn(this, ()=>closeSheet('pickerSheet'))">✕</button>
+    </div>
+    <div class="pp-search">
+      <input type="search" id="pickerQ" placeholder="Filter…"
+             oninput="renderPickerList()" autocomplete="off">
+    </div>
+    <div id="pickerList"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════
+     CONFIRM DIALOG
+═══════════════════════════════ -->
+<div class="confirm-bg" id="confirmDlg">
+  <div class="confirm-box">
+    <h3 id="confirmTitle">Confirm</h3>
+    <p id="confirmMsg"></p>
+    <div class="confirm-btns">
+      <button class="btn btn-ghost"
+              onclick="answerConfirm(false)"
+              ontouchend="tapBtn(this, ()=>answerConfirm(false))">Cancel</button>
+      <button class="btn btn-danger" id="confirmYesBtn"
+              onclick="answerConfirm(true)"
+              ontouchend="tapBtn(this, ()=>answerConfirm(true))">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- ═══════════════════════════════
+     JAVASCRIPT
+     Architecture:
+     - Lock screen renders immediately (no JS dependency)
+     - sql.js CDN script is loaded dynamically when user first taps Unlock/Create
+     - tapBtn() helper prevents double-fire from ontouchend + onclick
+     - All crypto uses Web Crypto API (always available)
+     - DB encrypted as AES-256-GCM in IndexedDB
+═══════════════════════════════ -->
+<script>
+'use strict';
+
+// ── Constants ──────────────────────────────────────
+const IDB   = 'roflmaodex';
+const S_DB  = 'enc_db';
+const S_META= 'meta';
+const K_CT  = 'ciphertext';
+const K_SALT= 'salt';
+const LOCK_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+const PBKDF2_ITER  = 100000;
+const PRESETS = [
+  'LP','45','78','HARDWOOD','LAMPS','COPPER','BRASS','GLASS',
+  'TOOLS','BOOKS','VINYL','FURNITURE','JEWELRY','COINS',
+  'POTTERY','TEXTILES','RESALE','PICKER'
+];
+
+// ── State ──────────────────────────────────────────
+let SQL       = null;   // sql.js module (loaded on demand)
+let db        = null;   // in-memory SQLite instance
+let cryptoKey = null;   // AES-256-GCM key (memory only, never stored)
+let lockTimer = null;
+let curTags   = [];     // tags being edited
+let pickerSlot= null;   // 'A' or 'B'
+let connSelA  = null;
+let connSelB  = null;
+let confirmCb = null;
+
+// ── tapBtn: prevents double-fire from touch+click ──
+// ontouchend fires, sets a flag, onclick checks flag.
+let lastTap = 0;
+function tapBtn(el, fn) {
+  const now = Date.now();
+  if (now - lastTap < 600) return; // ignore click that follows touchend
+  lastTap = now;
+  fn();
+}
+
+// ── Boot: check IDB immediately ────────────────────
+async function boot() {
+  try {
+    const salt = await idbGet(K_SALT);
+    document.getElementById('checkingBox').style.display = 'none';
+    if (salt) {
+      document.getElementById('unlockBox').style.display = 'block';
+    } else {
+      document.getElementById('setupBox').style.display = 'block';
+    }
+  } catch(e) {
+    document.getElementById('checkingBox').style.display = 'none';
+    document.getElementById('setupBox').style.display = 'block';
+  }
+}
+
+// ── Load sql.js on demand ──────────────────────────
+let sqlLoading = false;
+let sqlLoaded  = false;
+function loadSqlJs() {
+  return new Promise((resolve, reject) => {
+    if (sqlLoaded) { resolve(); return; }
+    if (sqlLoading) {
+      // Already loading — wait for it
+      const check = setInterval(() => {
+        if (sqlLoaded) { clearInterval(check); resolve(); }
+      }, 100);
+      return;
+    }
+    sqlLoading = true;
+    document.getElementById('loadingBar').style.display = 'block';
+
+    const script = document.createElement('script');
+    script.src = 'https://sql.js.org/dist/sql-wasm.js';
+    script.onload = async () => {
+      try {
+        SQL = await initSqlJs({ locateFile: f => `https://sql.js.org/dist/${f}` });
+        sqlLoaded = true;
+        document.getElementById('loadingBar').style.display = 'none';
+        resolve();
+      } catch(e) {
+        document.getElementById('loadingBar').style.display = 'none';
+        reject(new Error('sql.js init failed: ' + e.message));
+      }
+    };
+    script.onerror = () => {
+      document.getElementById('loadingBar').style.display = 'none';
+      reject(new Error('Could not load sql.js — check your internet connection.'));
+    };
+    document.head.appendChild(script);
+  });
+}
+
+// ── IndexedDB helpers ──────────────────────────────
+function idbOpen() {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open(IDB, 1);
+    r.onupgradeneeded = e => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains(S_DB))   d.createObjectStore(S_DB);
+      if (!d.objectStoreNames.contains(S_META)) d.createObjectStore(S_META);
+    };
+    r.onsuccess = e => res(e.target.result);
+    r.onerror   = e => rej(e.target.error);
+  });
+}
+async function idbGet(key) {
+  const idb = await idbOpen();
+  const st  = key === K_SALT ? S_META : S_DB;
+  return new Promise((res, rej) => {
+    const t = idb.transaction(st, 'readonly');
+    const r = t.objectStore(st).get(key);
+    r.onsuccess = e => res(e.target.result ?? null);
+    r.onerror   = e => rej(e.target.error);
+  });
+}
+async function idbSet(key, val) {
+  const idb = await idbOpen();
+  const st  = key === K_SALT ? S_META : S_DB;
+  return new Promise((res, rej) => {
+    const t = idb.transaction(st, 'readwrite');
+    const r = t.objectStore(st).put(val, key);
+    r.onsuccess = () => res();
+    r.onerror   = e => rej(e.target.error);
+  });
+}
+async function idbClear() {
+  const idb = await idbOpen();
+  return new Promise((res, rej) => {
+    const t = idb.transaction([S_DB, S_META], 'readwrite');
+    t.objectStore(S_DB).clear();
+    t.objectStore(S_META).clear();
+    t.oncomplete = () => res();
+    t.onerror    = e => rej(e.target.error);
+  });
+}
+
+// ── Crypto ────────────────────────────────────────
+async function deriveKey(pw, salt) {
+  const enc = new TextEncoder();
+  const mat = await crypto.subtle.importKey('raw', enc.encode(pw), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey(
+    { name:'PBKDF2', salt, iterations:PBKDF2_ITER, hash:'SHA-256' },
+    mat, { name:'AES-GCM', length:256 }, false, ['encrypt','decrypt']
+  );
+}
+async function encryptBytes(key, bytes) {
+  const iv  = crypto.getRandomValues(new Uint8Array(12));
+  const buf = await crypto.subtle.encrypt({ name:'AES-GCM', iv }, key, bytes);
+  return { iv, ciphertext: new Uint8Array(buf) };
+}
+async function decryptBytes(key, iv, ct) {
+  const p = await crypto.subtle.decrypt({ name:'AES-GCM', iv }, key, ct);
+  return new Uint8Array(p);
+}
+function packBackup(salt, iv, ct) {
+  const b  = new ArrayBuffer(2 + salt.length + 2 + iv.length + ct.length);
+  const dv = new DataView(b);
+  let o = 0;
+  dv.setUint16(o, salt.length, true); o += 2;
+  new Uint8Array(b, o, salt.length).set(salt); o += salt.length;
+  dv.setUint16(o, iv.length, true); o += 2;
+  new Uint8Array(b, o, iv.length).set(iv); o += iv.length;
+  new Uint8Array(b, o, ct.length).set(ct);
+  return b;
+}
+function unpackBackup(buf) {
+  const dv = new DataView(buf);
+  let o = 0;
+  const sl = dv.getUint16(o, true); o += 2;
+  const salt = new Uint8Array(buf.slice(o, o+sl)); o += sl;
+  const il = dv.getUint16(o, true); o += 2;
+  const iv  = new Uint8Array(buf.slice(o, o+il)); o += il;
+  return { salt, iv, ciphertext: new Uint8Array(buf.slice(o)) };
+}
+
+// ── Persist: encrypt DB → IDB ─────────────────────
+async function persistDB() {
+  if (!db || !cryptoKey) return;
+  const bytes = db.export();
+  const { iv, ciphertext } = await encryptBytes(cryptoKey, bytes);
+  await idbSet(K_CT, { iv, ciphertext });
+}
+
+// ── SQLite schema ──────────────────────────────────
+function initSchema() {
+  db.run(`
+    CREATE TABLE IF NOT EXISTS people (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      first_name TEXT NOT NULL,
+      last_name TEXT, hometown TEXT, current_town TEXT,
+      age INTEGER, notes TEXT,
+      created_at DATETIME DEFAULT (datetime('now'))
+    );
+    CREATE TABLE IF NOT EXISTS interests (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      person_id INTEGER NOT NULL, keyword TEXT NOT NULL,
+      FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE
+    );
+    CREATE TABLE IF NOT EXISTS connections (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      person_id INTEGER NOT NULL, connected_person_id INTEGER NOT NULL,
+      relationship_note TEXT,
+      FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE,
+      FOREIGN KEY (connected_person_id) REFERENCES people(id) ON DELETE CASCADE
+    );
+  `);
+}
+function lastInsertId() { return db.exec('SELECT last_insert_rowid()')[0].values[0][0]; }
+function insertTags(pid, kws) {
+  kws.forEach(k => db.run('INSERT INTO interests (person_id, keyword) VALUES (?,?)', [pid, k]));
+}
+
+// ── Demo data ──────────────────────────────────────
+function loadDemoData() {
+  db.run(`INSERT INTO people (first_name, last_name, notes) VALUES ('Jamie','(You)','Owner.')`);
+  const jId = lastInsertId(); insertTags(jId, ['RESALE','VINYL']);
+
+  db.run(`INSERT INTO people (first_name, hometown) VALUES ('Alice','Springfield')`);
+  const aId = lastInsertId(); insertTags(aId, ['LP','HARDWOOD']);
+
+  db.run(`INSERT INTO people (first_name, current_town) VALUES ('Bob','Shelbyville')`);
+  const bId = lastInsertId(); insertTags(bId, ['45','COPPER','LAMPS']);
+
+  db.run(`INSERT INTO connections (person_id, connected_person_id, relationship_note) VALUES (?,?,?)`,
+    [aId, bId, 'they do flea markets together']);
+}
+
+// ── SETUP (first run) ─────────────────────────────
+async function doSetup() {
+  const pw1 = document.getElementById('sp1').value;
+  const pw2 = document.getElementById('sp2').value;
+  const msg = document.getElementById('setupMsg');
+
+  if (pw1.length < 6) { msg.textContent = 'Password must be at least 6 characters.'; return; }
+  if (pw1 !== pw2)    { msg.textContent = 'Passwords do not match.'; return; }
+
+  msg.textContent = '';
+  setLoading('setupBtn', true);
+  try {
+    await loadSqlJs();
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    cryptoKey  = await deriveKey(pw1, salt);
+    db = new SQL.Database();
+    initSchema();
+    loadDemoData();
+    await idbSet(K_SALT, salt);
+    await persistDB();
+    showApp();
+  } catch(e) {
+    msg.textContent = 'Error: ' + e.message;
+    setLoading('setupBtn', false);
+  }
+}
+
+// ── UNLOCK ────────────────────────────────────────
+async function doUnlock() {
+  const pw  = document.getElementById('unlockPw').value;
+  const msg = document.getElementById('unlockMsg');
+
+  if (!pw) { msg.textContent = 'Enter your password.'; return; }
+
+  msg.textContent = '';
+  setLoading('unlockBtn', true);
+  try {
+    await loadSqlJs();
+    const salt   = await idbGet(K_SALT);
+    const stored = await idbGet(K_CT);
+    if (!salt || !stored) { msg.textContent = 'No data found. Try resetting.'; setLoading('unlockBtn', false); return; }
+
+    const key   = await deriveKey(pw, salt);
+    const bytes = await decryptBytes(key, stored.iv, stored.ciphertext);
+    db        = new SQL.Database(bytes);
+    cryptoKey = key;
+    initSchema();
+    showApp();
+  } catch(e) {
+    msg.textContent = 'Wrong password or corrupted data.';
+    document.getElementById('unlockPw').value = '';
+    setLoading('unlockBtn', false);
+  }
+}
+
+// ── Show/Lock App ──────────────────────────────────
+function showApp() {
+  document.getElementById('lockScreen').style.display = 'none';
+  document.getElementById('app').classList.add('visible');
+  resetLockTimer();
+  renderAll();
+}
+
+function lockApp() {
+  if (db) try { db.close(); } catch(_) {}
+  db = null; cryptoKey = null;
+  clearTimeout(lockTimer); lockTimer = null;
+  document.getElementById('app').classList.remove('visible');
+  document.getElementById('lockScreen').style.display = 'flex';
+  document.getElementById('unlockPw').value = '';
+  document.getElementById('unlockMsg').textContent = 'Locked.';
+  setLoading('unlockBtn', false);
+}
+
+// ── Auto-lock ──────────────────────────────────────
+function resetLockTimer() {
+  clearTimeout(lockTimer);
+  if (db) lockTimer = setTimeout(lockApp, LOCK_TIMEOUT);
+}
+['touchstart','click'].forEach(ev =>
+  document.addEventListener(ev, resetLockTimer, { passive: true })
+);
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && db) lockApp();
+});
+
+// ── Loading state helper ───────────────────────────
+function setLoading(btnId, loading) {
+  const btn = document.getElementById(btnId);
+  if (!btn) return;
+  btn.disabled = loading;
+  if (loading) {
+    btn._origText = btn.innerHTML;
+    btn.innerHTML = '<span class="spinner"></span> Loading…';
+  } else if (btn._origText) {
+    btn.innerHTML = btn._origText;
+  }
+}
+
+// ── Reset ──────────────────────────────────────────
+function confirmReset() {
+  showConfirm(
+    '⚠️ Wipe All Data',
+    'This permanently deletes everything. There is NO recovery. Are you sure?',
+    async () => {
+      await idbClear();
+      location.reload();
+    },
+    'Delete Everything'
+  );
+}
+
+// ── Tabs ───────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('on'));
+  document.querySelectorAll('.nb').forEach(b => b.classList.remove('on'));
+  document.getElementById('pan-' + name).classList.add('on');
+  document.getElementById('nb-' + name).classList.add('on');
+  document.getElementById('fab').style.display = (name === 'people') ? 'flex' : 'none';
+  if (name === 'interests')   renderInterests();
+  if (name === 'connections') renderConnections();
+  if (name === 'search') {
+    document.getElementById('globalQ').value = '';
+    document.getElementById('searchResults').innerHTML = '';
+  }
+}
+
+// ── Render all ─────────────────────────────────────
+function renderAll() {
+  renderPeople();
+  updateCount();
+}
+function updateCount() {
+  if (!db) return;
+  const r = db.exec('SELECT COUNT(*) FROM people');
+  const n = r.length ? r[0].values[0][0] : 0;
+  document.getElementById('recCount').textContent = n + ' people';
+}
+
+// ── People list ────────────────────────────────────
+function renderPeople() {
+  const q    = (document.getElementById('peopleQ').value || '').trim();
+  const list = document.getElementById('peopleList');
+  const ppl  = queryPeople(q);
+
+  if (!ppl.length) {
+    list.innerHTML = `<div class="empty">
+      <div class="e-ico">📭</div>
+      <p>${q ? 'No matches.' : 'No people yet.<br>Tap the green + button to add someone.'}</p>
+    </div>`;
+    return;
+  }
+
+  list.innerHTML = ppl.map(p => {
+    const name = [p.first_name, p.last_name].filter(Boolean).join(' ');
+    const loc  = [
+      p.hometown     ? '🏠 ' + esc(p.hometown)     : '',
+      p.current_town ? '📍 ' + esc(p.current_town) : ''
+    ].filter(Boolean).join('  ');
+    const tags = p.interests
+      ? p.interests.split(',').map(t => `<span class="chip">${esc(t.trim())}</span>`).join('')
+      : '';
+    const age  = p.age ? `<span>Age ${p.age}</span>` : '';
+    return `
+      <div class="card-wrap" id="cw-${p.id}">
+        <div class="card-del-bg" id="cdb-${p.id}">🗑️</div>
+        <div class="pcard" id="pc-${p.id}"
+             ontouchstart="swipeStart(event,${p.id})"
+             ontouchmove="swipeMove(event,${p.id})"
+             ontouchend="swipeEnd(event,${p.id})"
+             onclick="openEditPerson(${p.id})">
+          <div class="pcard-name">${esc(name)}</div>
+          <div class="pcard-meta">${loc}${age ? '  ' + age : ''}</div>
+          <div class="tag-row">${tags}</div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function clearPeopleQ() {
+  document.getElementById('peopleQ').value = '';
+  renderPeople();
+}
+
+function queryPeople(q = '') {
+  if (!db) return [];
+  let sql = `SELECT p.*, GROUP_CONCAT(i.keyword, ',') AS interests
+             FROM people p LEFT JOIN interests i ON i.person_id = p.id`;
+  const params = [];
+  if (q) {
+    sql += ` WHERE p.first_name LIKE ? OR p.last_name LIKE ?
+             OR p.hometown LIKE ? OR p.current_town LIKE ?`;
+    const lk = `%${q}%`;
+    params.push(lk, lk, lk, lk);
+  }
+  sql += ' GROUP BY p.id ORDER BY p.first_name, p.last_name';
+  const r = db.exec(sql, params);
+  return r.length ? r[0].values.map(v => rowToObj(r[0].columns, v)) : [];
+}
+
+// ── Swipe to delete ────────────────────────────────
+const swState = {};
+function swipeStart(e, id) {
+  swState[id] = { x0: e.touches[0].clientX, dx: 0 };
+}
+function swipeMove(e, id) {
+  if (!swState[id]) return;
+  const dx = e.touches[0].clientX - swState[id].x0;
+  if (dx > 0) { swState[id].dx = 0; return; }
+  swState[id].dx = dx;
+  const card = document.getElementById('pc-' + id);
+  if (card) { card.style.transition = 'none'; card.style.transform = `translateX(${Math.max(dx,-80)}px)`; }
+  e.preventDefault();
+}
+function swipeEnd(e, id) {
+  const s = swState[id];
+  if (!s) return;
+  const card = document.getElementById('pc-' + id);
+  if (!card) { delete swState[id]; return; }
+  card.style.transition = '';
+  if (s.dx < -55) {
+    card.style.transform = 'translateX(-80px)';
+    const bg = document.getElementById('cdb-' + id);
+    if (bg) {
+      bg.ontouchend = ev => { ev.preventDefault(); card.style.transform = ''; confirmSwipeDelete(id); };
+      bg.onclick    = ()  => { card.style.transform = ''; confirmSwipeDelete(id); };
+    }
+    // Snap back if user taps elsewhere
+    setTimeout(() => {
+      const snap = ev => {
+        if (!ev.target.closest('#cdb-' + id)) {
+          if (card) card.style.transform = '';
+          document.removeEventListener('touchstart', snap);
+          document.removeEventListener('click', snap);
+        }
+      };
+      document.addEventListener('touchstart', snap, { once: false, passive: true });
+      document.addEventListener('click',      snap, { once: false });
+    }, 80);
+  } else {
+    card.style.transform = '';
+  }
+  delete swState[id];
+}
+
+function confirmSwipeDelete(id) {
+  const r = db.exec('SELECT first_name, last_name FROM people WHERE id=?', [id]);
+  const name = r.length ? [r[0].values[0][0], r[0].values[0][1]].filter(Boolean).join(' ') : 'this person';
+  showConfirm('Delete Person', `Remove ${name}? Also removes their interests and connections.`, async () => {
+    db.run('DELETE FROM interests   WHERE person_id=? OR connected_person_id=?', [id, id]);
+    db.run('DELETE FROM connections WHERE person_id=? OR connected_person_id=?', [id, id]);
+    db.run('DELETE FROM people WHERE id=?', [id]);
+    await persistDB();
+    renderAll();
+    showToast('Deleted', 'ok');
+  });
+}
+
+// ── Add / Edit person sheet ─────────────────────────
+function buildPresets() {
+  document.getElementById('presetWrap').innerHTML = PRESETS.map(kw =>
+    `<button class="preset-btn ${curTags.includes(kw) ? 'sel' : ''}"
+             data-kw="${kw}"
+             onclick="togglePreset('${kw}')"
+             ontouchend="tapBtn(this, ()=>togglePreset('${kw}'))">${kw}</button>`
+  ).join('');
+}
+function togglePreset(kw) {
+  if (curTags.includes(kw)) {
+    curTags = curTags.filter(t => t !== kw);
+  } else {
+    curTags.push(kw);
+  }
+  const btn = document.querySelector(`.preset-btn[data-kw="${kw}"]`);
+  if (btn) btn.classList.toggle('sel', curTags.includes(kw));
+  renderActiveTags();
+}
+function addCustomKw() {
+  const inp = document.getElementById('customKw');
+  const val = inp.value.trim().toUpperCase().replace(/[,\s]+/g, '_');
+  if (!val) return;
+  if (!curTags.includes(val)) curTags.push(val);
+  inp.value = '';
+  buildPresets();
+  renderActiveTags();
+}
+function removeTag(kw) {
+  curTags = curTags.filter(t => t !== kw);
+  const btn = document.querySelector(`.preset-btn[data-kw="${kw}"]`);
+  if (btn) btn.classList.remove('sel');
+  renderActiveTags();
+}
+function renderActiveTags() {
+  const wrap = document.getElementById('activeTags');
+  if (!curTags.length) {
+    wrap.innerHTML = '<span style="color:var(--dim);font-size:13px">None yet</span>';
+    return;
+  }
+  wrap.innerHTML = curTags.map(kw =>
+    `<span class="a-chip">${esc(kw)}<button class="a-chip-x"
+       onclick="removeTag('${esc(kw)}')"
+       ontouchend="tapBtn(this, ()=>removeTag('${esc(kw)}'))">✕</button></span>`
+  ).join('');
+}
+
+function openAddPerson() {
+  curTags = [];
+  document.getElementById('personSheetTitle').textContent = 'Add Person';
+  document.getElementById('editId').value    = '';
+  document.getElementById('pFirst').value    = '';
+  document.getElementById('pLast').value     = '';
+  document.getElementById('pHome').value     = '';
+  document.getElementById('pCurr').value     = '';
+  document.getElementById('pAge').value      = '';
+  document.getElementById('pNotes').value    = '';
+  document.getElementById('personMsg').textContent = '';
+  document.getElementById('deletePersonRow').style.display = 'none';
+  buildPresets();
+  renderActiveTags();
+  openSheet('personSheet');
+}
+
+function openEditPerson(id) {
+  if (!db) return;
+  const r = db.exec('SELECT * FROM people WHERE id=?', [id]);
+  if (!r.length) return;
+  const p  = rowToObj(r[0].columns, r[0].values[0]);
+  const tg = db.exec('SELECT keyword FROM interests WHERE person_id=?', [id]);
+  curTags  = tg.length ? tg[0].values.map(v => v[0]) : [];
+
+  document.getElementById('personSheetTitle').textContent = 'Edit Person';
+  document.getElementById('editId').value    = id;
+  document.getElementById('pFirst').value    = p.first_name    || '';
+  document.getElementById('pLast').value     = p.last_name     || '';
+  document.getElementById('pHome').value     = p.hometown      || '';
+  document.getElementById('pCurr').value     = p.current_town  || '';
+  document.getElementById('pAge').value      = p.age           || '';
+  document.getElementById('pNotes').value    = p.notes         || '';
+  document.getElementById('personMsg').textContent = '';
+  document.getElementById('deletePersonRow').style.display = 'block';
+  buildPresets();
+  renderActiveTags();
+  openSheet('personSheet');
+}
+
+async function savePerson() {
+  const id    = document.getElementById('editId').value;
+  const first = document.getElementById('pFirst').value.trim();
+  const msg   = document.getElementById('personMsg');
+  if (!first) { msg.textContent = 'First name is required.'; return; }
+
+  const last  = document.getElementById('pLast').value.trim();
+  const home  = document.getElementById('pHome').value.trim();
+  const curr  = document.getElementById('pCurr').value.trim();
+  const age   = document.getElementById('pAge').value;
+  const notes = document.getElementById('pNotes').value.trim();
+
+  try {
+    if (id) {
+      db.run(`UPDATE people SET first_name=?,last_name=?,hometown=?,current_town=?,age=?,notes=? WHERE id=?`,
+        [first, last||null, home||null, curr||null, age||null, notes||null, id]);
+      db.run('DELETE FROM interests WHERE person_id=?', [id]);
+      insertTags(id, curTags);
+    } else {
+      db.run(`INSERT INTO people (first_name,last_name,hometown,current_town,age,notes) VALUES (?,?,?,?,?,?)`,
+        [first, last||null, home||null, curr||null, age||null, notes||null]);
+      insertTags(lastInsertId(), curTags);
+    }
+    await persistDB();
+    closeSheet('personSheet');
+    renderAll();
+    showToast(id ? 'Updated' : 'Person added', 'ok');
+  } catch(e) {
+    msg.textContent = 'Error: ' + e.message;
+  }
+}
+
+function confirmDeletePerson() {
+  const id   = document.getElementById('editId').value;
+  const name = document.getElementById('pFirst').value;
+  showConfirm('Delete Person', `Remove ${name}? Also removes their interests and connections.`, async () => {
+    db.run('DELETE FROM interests   WHERE person_id=? OR connected_person_id=?', [id, id]);
+    db.run('DELETE FROM connections WHERE person_id=? OR connected_person_id=?', [id, id]);
+    db.run('DELETE FROM people WHERE id=?', [id]);
+    await persistDB();
+    closeSheet('personSheet');
+    renderAll();
+    showToast('Deleted', 'ok');
+  });
+}
+
+// ── Interests tab ──────────────────────────────────
+function renderInterests() {
+  document.getElementById('i-grid-wrap').style.display = 'block';
+  document.getElementById('i-detail').style.display    = 'none';
+
+  const r = db.exec(`SELECT keyword, COUNT(*) AS cnt FROM interests GROUP BY keyword ORDER BY cnt DESC, keyword`);
+  const grid = document.getElementById('i-grid');
+
+  if (!r.length || !r[0].values.length) {
+    grid.innerHTML = `<div class="empty" style="grid-column:1/-1"><div class="e-ico">🏷️</div><p>No interests yet.</p></div>`;
+    return;
+  }
+  grid.innerHTML = r[0].values.map(([kw, cnt]) =>
+    `<div class="i-tile"
+          onclick="showInterestDetail('${esc(kw)}')"
+          ontouchend="tapBtn(this, ()=>showInterestDetail('${esc(kw)}'))">
+       <div class="i-kw">${esc(kw)}</div>
+       <div class="i-ct">${cnt} ${cnt===1?'person':'people'}</div>
+     </div>`
+  ).join('');
+}
+
+function showInterestDetail(kw) {
+  document.getElementById('i-grid-wrap').style.display = 'none';
+  document.getElementById('i-detail').style.display    = 'block';
+  document.getElementById('i-detail-title').textContent = '🏷️ ' + kw;
+
+  const r = db.exec(`
+    SELECT p.id, p.first_name, p.last_name, p.hometown, p.current_town,
+           GROUP_CONCAT(i2.keyword, ',') AS interests
+    FROM interests i
+    JOIN people p ON p.id = i.person_id
+    LEFT JOIN interests i2 ON i2.person_id = p.id
+    WHERE i.keyword = ?
+    GROUP BY p.id
+  `, [kw]);
+
+  const list = document.getElementById('i-detail-list');
+  if (!r.length || !r[0].values.length) {
+    list.innerHTML = '<div class="empty"><p>No people.</p></div>';
+    return;
+  }
+  list.innerHTML = r[0].values.map(v => {
+    const p    = rowToObj(r[0].columns, v);
+    const name = [p.first_name, p.last_name].filter(Boolean).join(' ');
+    const loc  = [p.hometown && '🏠 ' + esc(p.hometown), p.current_town && '📍 ' + esc(p.current_town)].filter(Boolean).join('  ');
+    const tags = p.interests ? p.interests.split(',').map(t =>
+      `<span class="chip ${t.trim()===kw?'hl':''}">${esc(t.trim())}</span>`).join('') : '';
+    return `<div class="pcard" style="margin-bottom:10px"
+                 onclick="openEditPerson(${p.id})"
+                 ontouchend="tapBtn(this, ()=>openEditPerson(${p.id}))">
+      <div class="pcard-name">${esc(name)}</div>
+      <div class="pcard-meta">${loc}</div>
+      <div class="tag-row">${tags}</div>
+    </div>`;
+  }).join('');
+}
+
+function closeIDetail() {
+  document.getElementById('i-grid-wrap').style.display = 'block';
+  document.getElementById('i-detail').style.display    = 'none';
+}
+
+// ── Connections tab ────────────────────────────────
+function renderConnections() {
+  connSelA = null; connSelB = null;
+  document.getElementById('pickLabelA').textContent = 'Tap to select…';
+  document.getElementById('pickLabelB').textContent = 'Tap to select…';
+  document.getElementById('pickLabelA').className   = 'pick-placeholder';
+  document.getElementById('pickLabelB').className   = 'pick-placeholder';
+  document.getElementById('connNote').value = '';
+  renderConnList();
+}
+
+function openPicker(slot) {
+  pickerSlot = slot;
+  document.getElementById('pickerTitle').textContent = slot === 'A' ? 'Select Person A' : 'Select Person B';
+  document.getElementById('pickerQ').value = '';
+  renderPickerList();
+  openSheet('pickerSheet');
+}
+
+function renderPickerList() {
+  const q   = (document.getElementById('pickerQ').value || '').trim().toLowerCase();
+  const r   = db.exec('SELECT id, first_name, last_name, hometown, current_town FROM people ORDER BY first_name');
+  const ppl = r.length ? r[0].values : [];
+  const fil = ppl.filter(([id,f,l]) => !q || [f,l].join(' ').toLowerCase().includes(q));
+  const sel = pickerSlot === 'A' ? connSelA : connSelB;
+  const list = document.getElementById('pickerList');
+
+  if (!fil.length) { list.innerHTML = '<div class="empty"><p>No people found.</p></div>'; return; }
+
+  list.innerHTML = fil.map(([id, f, l, hm, ct]) => {
+    const name = [f,l].filter(Boolean).join(' ');
+    const meta = [hm && '🏠 '+hm, ct && '📍 '+ct].filter(Boolean).join('  ');
+    const isSel = sel == id;
+    return `<div class="pp-row ${isSel?'sel':''}"
+                 onclick="pickPerson(${id}, '${esc(name)}')"
+                 ontouchend="tapBtn(this, ()=>pickPerson(${id}, '${esc(name)}'))">
+      <span class="pp-check">${isSel ? '✅' : '⬜'}</span>
+      <div>
+        <div class="pp-name">${esc(name)}</div>
+        ${meta ? `<div class="pp-meta">${esc(meta)}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function pickPerson(id, name) {
+  if (pickerSlot === 'A') {
+    connSelA = id;
+    const el = document.getElementById('pickLabelA');
+    el.textContent = name; el.className = '';
+  } else {
+    connSelB = id;
+    const el = document.getElementById('pickLabelB');
+    el.textContent = name; el.className = '';
+  }
+  closeSheet('pickerSheet');
+}
+
+async function addConnection() {
+  if (!connSelA || !connSelB) { showToast('Select both people', 'err'); return; }
+  if (connSelA == connSelB)   { showToast('Pick two different people', 'err'); return; }
+  const note = document.getElementById('connNote').value.trim();
+  const dup  = db.exec('SELECT id FROM connections WHERE person_id=? AND connected_person_id=?', [connSelA, connSelB]);
+  if (dup.length && dup[0].values.length) { showToast('Already connected', 'err'); return; }
+  db.run('INSERT INTO connections (person_id, connected_person_id, relationship_note) VALUES (?,?,?)',
+    [connSelA, connSelB, note || null]);
+  await persistDB();
+  renderConnections();
+  showToast('Connection added', 'ok');
+}
+
+function renderConnList() {
+  const r = db.exec(`
+    SELECT c.id, c.relationship_note,
+           p1.first_name AS f1, p1.last_name AS l1,
+           p2.first_name AS f2, p2.last_name AS l2
+    FROM connections c
+    JOIN people p1 ON p1.id = c.person_id
+    JOIN people p2 ON p2.id = c.connected_person_id
+    ORDER BY p1.first_name
+  `);
+  const list = document.getElementById('connList');
+  if (!r.length || !r[0].values.length) {
+    list.innerHTML = '<div class="empty"><div class="e-ico">🔗</div><p>No connections yet.</p></div>';
+    return;
+  }
+  list.innerHTML = r[0].values.map(([id, note, f1, l1, f2, l2]) => {
+    const n1 = [f1,l1].filter(Boolean).join(' ');
+    const n2 = [f2,l2].filter(Boolean).join(' ');
+    return `<div class="conn-item">
+      <div style="flex:1;min-width:0">
+        <div class="conn-names">${esc(n1)} ↔ ${esc(n2)}</div>
+        ${note ? `<div class="conn-note">${esc(note)}</div>` : ''}
+      </div>
+      <button class="conn-del-btn"
+              onclick="deleteConn(${id})"
+              ontouchend="tapBtn(this, ()=>deleteConn(${id}))">🗑️</button>
+    </div>`;
+  }).join('');
+}
+
+async function deleteConn(id) {
+  showConfirm('Remove Connection', 'Delete this connection?', async () => {
+    db.run('DELETE FROM connections WHERE id=?', [id]);
+    await persistDB();
+    renderConnList();
+    showToast('Removed', 'ok');
+  }, 'Remove');
+}
+
+// ── Global Search ──────────────────────────────────
+function doGlobalSearch() {
+  const q = (document.getElementById('globalQ').value || '').trim();
+  const el = document.getElementById('searchResults');
+  if (!q) { el.innerHTML = ''; return; }
+
+  const r = db.exec(`
+    SELECT DISTINCT p.id, p.first_name, p.last_name, p.hometown, p.current_town,
+                    p.age, p.notes, GROUP_CONCAT(i.keyword, ',') AS interests
+    FROM people p LEFT JOIN interests i ON i.person_id = p.id
+    WHERE p.first_name LIKE ? OR p.last_name LIKE ? OR p.hometown LIKE ?
+       OR p.current_town LIKE ? OR p.notes LIKE ? OR i.keyword LIKE ?
+    GROUP BY p.id ORDER BY p.first_name
+  `, Array(6).fill(`%${q}%`));
+
+  const ppl = r.length ? r[0].values.map(v => rowToObj(r[0].columns, v)) : [];
+  if (!ppl.length) {
+    el.innerHTML = '<div class="empty"><div class="e-ico">🔍</div><p>No results.</p></div>';
+    return;
+  }
+  el.innerHTML = ppl.map(p => {
+    const name = [p.first_name, p.last_name].filter(Boolean).join(' ');
+    const loc  = [p.hometown && '🏠 '+p.hometown, p.current_town && '📍 '+p.current_town].filter(Boolean).join('  ');
+    const tags = p.interests ? p.interests.split(',').map(t => {
+      const hl = t.toLowerCase().includes(q.toLowerCase());
+      return `<span class="chip ${hl?'hl':''}">${esc(t.trim())}</span>`;
+    }).join('') : '';
+    return `<div class="pcard" style="margin-bottom:10px"
+                 onclick="openEditPerson(${p.id})"
+                 ontouchend="tapBtn(this, ()=>openEditPerson(${p.id}))">
+      <div class="pcard-name">${hlText(name, q)}</div>
+      <div class="pcard-meta">${hlText(loc, q)}</div>
+      <div class="tag-row">${tags}</div>
+      ${p.notes && p.notes.toLowerCase().includes(q.toLowerCase())
+        ? `<div style="font-size:12px;color:var(--txt2);margin-top:6px">${hlText(truncStr(p.notes,80),q)}</div>`
+        : ''}
+    </div>`;
+  }).join('');
+}
+function clearGlobalQ() {
+  document.getElementById('globalQ').value = '';
+  document.getElementById('searchResults').innerHTML = '';
+}
+
+// ── Export / Import ────────────────────────────────
+async function exportEnc() {
+  try {
+    const salt   = await idbGet(K_SALT);
+    const stored = await idbGet(K_CT);
+    if (!stored) { showToast('Nothing to export', 'err'); return; }
+    downloadBlob(packBackup(salt, stored.iv, stored.ciphertext), 'roflmaodex_backup.enc', 'application/octet-stream');
+    showToast('Backup downloaded', 'ok');
+  } catch(e) { showToast('Export failed', 'err'); }
+}
+
+function exportCSV() {
+  if (!db) return;
+  const r = db.exec(`
+    SELECT p.first_name, p.last_name, p.hometown, p.current_town, p.age, p.notes,
+           GROUP_CONCAT(i.keyword, '|') AS interests
+    FROM people p LEFT JOIN interests i ON i.person_id = p.id
+    GROUP BY p.id ORDER BY p.first_name
+  `);
+  let csv = 'first_name,last_name,hometown,current_town,age,notes,interests\n';
+  if (r.length && r[0].values)
+    r[0].values.forEach(row => csv += row.map(v => `"${(v??'').toString().replace(/"/g,'""')}"`).join(',') + '\n');
+  downloadBlob(csv, 'roflmaodex_export.csv', 'text/csv');
+  showToast('CSV exported', 'ok');
+}
+
+async function importBackup(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const pw = prompt('Enter the password for this backup:');
+  if (!pw) return;
+  try {
+    const buf   = await file.arrayBuffer();
+    const { salt, iv, ciphertext } = unpackBackup(buf);
+    const key   = await deriveKey(pw, salt);
+    const bytes = await decryptBytes(key, iv, ciphertext);
+    showConfirm('Import Backup', 'This will replace ALL current data. Continue?', async () => {
+      const newEnc = await encryptBytes(cryptoKey, bytes);
+      await idbSet(K_CT, { iv: newEnc.iv, ciphertext: newEnc.ciphertext });
+      if (db) try { db.close(); } catch(_) {}
+      db = new SQL.Database(bytes);
+      initSchema();
+      renderAll();
+      showToast('Backup restored', 'ok');
+    }, 'Import');
+  } catch(e) {
+    showToast('Import failed — wrong password?', 'err');
+  }
+  input.value = '';
+}
+
+async function changePassword() {
+  const cur  = document.getElementById('cpCur').value;
+  const nw   = document.getElementById('cpNew').value;
+  const conf = document.getElementById('cpConf').value;
+  const msg  = document.getElementById('cpMsg');
+  msg.className = 'msg err';
+  if (!cur||!nw||!conf)   { msg.textContent = 'Fill all fields.'; return; }
+  if (nw.length < 6)      { msg.textContent = 'Min 6 characters.'; return; }
+  if (nw !== conf)        { msg.textContent = "Passwords don't match."; return; }
+  msg.textContent = 'Verifying…';
+  try {
+    const salt   = await idbGet(K_SALT);
+    const stored = await idbGet(K_CT);
+    const testKey = await deriveKey(cur, salt);
+    await decryptBytes(testKey, stored.iv, stored.ciphertext); // throws if wrong
+    const newSalt = crypto.getRandomValues(new Uint8Array(16));
+    cryptoKey     = await deriveKey(nw, newSalt);
+    await idbSet(K_SALT, newSalt);
+    await persistDB();
+    msg.className = 'msg ok';
+    msg.textContent = '✓ Password updated.';
+    ['cpCur','cpNew','cpConf'].forEach(id => document.getElementById(id).value = '');
+    setTimeout(() => { msg.textContent=''; }, 3000);
+  } catch(e) {
+    msg.textContent = 'Current password is incorrect.';
+  }
+}
+
+// ── Sheet helpers ──────────────────────────────────
+function openSheet(id) {
+  document.getElementById(id).classList.add('open');
+}
+function closeSheet(id) {
+  document.getElementById(id).classList.remove('open');
+}
+// Close on background tap
+document.querySelectorAll('.sheet-bg').forEach(el => {
+  el.addEventListener('touchend', e => { if (e.target === el) el.classList.remove('open'); });
+  el.addEventListener('click',    e => { if (e.target === el) el.classList.remove('open'); });
+});
+
+// ── Confirm dialog ─────────────────────────────────
+function showConfirm(title, msg, cb, yesLabel = 'Delete') {
+  document.getElementById('confirmTitle').textContent = title;
+  document.getElementById('confirmMsg').textContent   = msg;
+  document.getElementById('confirmYesBtn').textContent = yesLabel;
+  document.getElementById('confirmDlg').classList.add('open');
+  confirmCb = cb;
+}
+function answerConfirm(yes) {
+  document.getElementById('confirmDlg').classList.remove('open');
+  if (yes && confirmCb) confirmCb();
+  confirmCb = null;
+}
+
+// ── Toast ──────────────────────────────────────────
+let toastTimer = null;
+function showToast(msg, type = 'ok') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className   = `toast ${type} show`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// ── Utilities ──────────────────────────────────────
+function esc(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function rowToObj(cols, vals) {
+  const o = {}; cols.forEach((c, i) => o[c] = vals[i]); return o;
+}
+function hlText(text, q) {
+  if (!q || !text) return esc(text || '');
+  const re = new RegExp('(' + q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + ')', 'gi');
+  return esc(text).replace(re, '<mark>$1</mark>');
+}
+function truncStr(s, n) { return s && s.length > n ? s.slice(0, n) + '…' : (s || ''); }
+function downloadBlob(data, name, mime) {
+  const blob = new Blob([data], { type: mime });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// ── Service Worker ─────────────────────────────────
+if ('serviceWorker' in navigator) {
+  const swCode = `
+    const C='rdex-v3';
+    const A=[self.location.pathname,
+             'https://sql.js.org/dist/sql-wasm.js',
+             'https://sql.js.org/dist/sql-wasm.wasm'];
+    self.addEventListener('install',e=>{
+      e.waitUntil(caches.open(C).then(c=>
+        Promise.allSettled(A.map(u=>c.add(u).catch(()=>{})))
+      ).then(()=>self.skipWaiting()));
+    });
+    self.addEventListener('activate',e=>{
+      e.waitUntil(caches.keys().then(ks=>
+        Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))
+      ).then(()=>self.clients.claim()));
+    });
+    self.addEventListener('fetch',e=>{
+      e.respondWith(caches.match(e.request).then(r=>
+        r || fetch(e.request).catch(()=>new Response('Offline',{status:503}))
+      ));
+    });
+  `;
+  navigator.serviceWorker.register(
+    URL.createObjectURL(new Blob([swCode], { type: 'application/javascript' }))
+  ).catch(() => {});
+}
+
+// ── Start: check IDB immediately, show correct box ─
+boot();
+</script>
+</body>
+</html>
